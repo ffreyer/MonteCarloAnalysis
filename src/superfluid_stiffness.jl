@@ -38,14 +38,14 @@ function dia_K_x(mc::DQMC, G::AbstractMatrix, shift_dir)
 
     # Get hoppings
     if !isdefined(mc.stack, :hopping_matrix)
-        MonteCarlo.init_hopping_matrices(mc, mc.model)
+        init_hopping_matrices(mc, mc.model)
     end
     T = Matrix(mc.stack.hopping_matrix)
 
     # Filter directions appropriate to shift_dir
     normalize!(shift_dir) # to be sure
     dirs = directions(lattice(mc))
-    idxs = filter(MonteCarlo.hopping_directions(lattice(mc))) do i
+    idxs = filter(hopping_directions(lattice(mc))) do i
         dot(dirs[i], shift_dir) > 1e-6
     end
 
@@ -55,7 +55,7 @@ function dia_K_x(mc::DQMC, G::AbstractMatrix, shift_dir)
     
     # If we used symmetry between spin up and spin down to reduce the size of 
     # the greens matrix we need to include a factor 2 to include both spins.
-    flv = MonteCarlo.nflavors(mc)
+    flv = nflavors(mc)
     if     flv == 1; f = 2.0
     elseif flv == 2; f = 1.0
     else error("The diamagnetic contribution to the superfluid density has no implementation for $flv flavors")
@@ -107,9 +107,11 @@ _mapping(dirs::Union{Vector, Tuple}) = copy(dirs)
 Returns the Fourier transformed current current correlation along a given 
 direction. This is the paramagnetic contribution of the electromagnetic response.
 """
-cached_para_ccc(mc::DQMC, key::Symbol, shift_dir) = cached_para_ccc(mc, mc[key], shift_dir)
-function cached_para_ccc(mc::DQMC, m::DQMCMeasurement, shift_dir)
-    return cached_para_ccc(lattice(mc), m.lattice_iterator, mean(m), shift_dir)
+function cached_para_ccc(mc::DQMC, key::Symbol, shift_dir; kwargs...)
+    return cached_para_ccc(mc, mc[key], shift_dir; kwargs...)
+end
+function cached_para_ccc(mc::DQMC, m::DQMCMeasurement, shift_dir; kwargs...)
+    return cached_para_ccc(lattice(mc), m.lattice_iterator, mean(m), shift_dir; kwargs...)
 end
 
 function cached_para_ccc(l::Lattice, iter::EachLocalQuadByDistance, ccs::Array, shift_dir)
@@ -213,7 +215,7 @@ function reverse_bond_table(l)
     return table
 end
 
-function cached_para_ccc(l::Lattice, iter::EachBondPairByBravaisDistance, ccs::Array, shift_dir)
+function cached_para_ccc(l::Lattice, iter::EachBondPairByBravaisDistance, ccs::Array, shift_dir; skip_check = false)
     # Equivalent to the above with a more straight forward lattice iterator
     
     # Get caches
@@ -223,11 +225,11 @@ function cached_para_ccc(l::Lattice, iter::EachBondPairByBravaisDistance, ccs::A
     else
         l.cache.cache[:fft_cache] = Matrix{ComplexF64}(undef, l.Ls)
     end::Matrix{ComplexF64}
-    qs = MonteCarloAnalysis.cached_reciprocal_discretization(l)::Matrix{Vector{Float64}}
+    qs = cached_reciprocal_discretization(l)::Matrix{Vector{Float64}}
 
     uc = l.unitcell
     bs = uc.bonds
-    v1, v2 = MonteCarlo.lattice_vectors(l)
+    v1, v2 = lattice_vectors(l)
 
     # directions of all bonds
     ds = map(bs) do b
@@ -242,23 +244,33 @@ function cached_para_ccc(l::Lattice, iter::EachBondPairByBravaisDistance, ccs::A
     # directions applicable to shift_dir (and measured bonds)
     applicable = let
         applicable = filter(i -> dot(ds[i], shift_dir) > 0, eachindex(ds))
-        if iter.directions == Colon
+        if iter.bond_idxs == Colon
             # All bonds are included, so the mapping is just i -> i
             Pair.(applicable, applicable)
         else
             # A subset of bonds is included. We need to further reduce this 
             # subset of bonds to those applicable to shift_dir. If bonds going 
             # in the reverse direction can act as replacements.
-            map(applicable) do idx
-                i = findfirst(isequal(idx), iter.directions)
+            output = Pair{Int, Int}[]
+
+            for idx in applicable
+                i = findfirst(isequal(idx), iter.bond_idxs)
                 if i === nothing
-                    i = findfirst(isequal(equivalency[idx]), iter.directions)
-                    i === nothing && error("Missing bond $idx (or $(equivalency[idx]))")
-                    return i => equivalency[idx]
+                    i = findfirst(isequal(equivalency[idx]), iter.bond_idxs)
+                    if i === nothing
+                        if !skip_check
+                            error("Missing bond $idx (or $(equivalency[idx]))")
+                        else
+                            continue
+                        end
+                    end
+                    push!(output, i => equivalency[idx])
                 else
-                    return i => idx
+                    push!(output, i => idx)
                 end
             end
+
+            output
         end
     end
     

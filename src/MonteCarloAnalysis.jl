@@ -9,6 +9,12 @@ import ProgressMeter
 @reexport using LinearAlgebra
 @reexport using FFTW
 using Distributed
+using MonteCarlo.BinningAnalysis
+
+using MonteCarlo:
+    lattice_vectors, reciprocal_vectors, generate_combinations, _apply_wrap!,
+    directed_norm2, init_hopping_matrices, hopping_directions, nflavors,
+    DQMCMeasurement
 
 include("FileIO.jl")
 include("DataFrames.jl")

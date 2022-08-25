@@ -1,6 +1,3 @@
-import Makie: convert_arguments, PointBased
-using MonteCarlo: Lattice, Bond, OpenBondIterator, bonds_open
-
 function convert_arguments(P::Type{<:Scatter}, l::Lattice{D}) where D
     return convert_arguments(P, Point{D}.(positions(l))[:])
 end

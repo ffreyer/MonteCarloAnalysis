@@ -1,7 +1,7 @@
 # TODO generalize
 function reciprocal_discretization(l::Lattice{2})
     Ls = size(l)
-    vecs = MonteCarlo.reciprocal_vectors(l)
+    vecs = reciprocal_vectors(l)
 
     qs = [zeros(2) for _ in 1:Ls[1], _ in 1:Ls[2]]
     temp = zeros(length(Ls))
@@ -96,7 +96,7 @@ end
 
 
 function Bravais_dir2indices(lattice::Lattice{2}, ϵ = 1e-6)
-    wrap = MonteCarlo.generate_combinations(Bravais(lattice))
+    wrap = generate_combinations(Bravais(lattice))
     directions = Vector{Float64}[]
     idxs = Tuple{Int, Int}[]
     sizehint!(directions, length(Bravais(lattice)))
@@ -105,12 +105,12 @@ function Bravais_dir2indices(lattice::Lattice{2}, ϵ = 1e-6)
     new_d = zeros(2)
     p0 = zeros(2)
     p = zeros(2)
-    v1, v2 = MonteCarlo.lattice_vectors(lattice)
+    v1, v2 = lattice_vectors(lattice)
     
     for i in 0:lattice.Ls[1]-1
         for j in 0:lattice.Ls[2]-1
             @. p = i * v1 + j * v2
-            MonteCarlo._apply_wrap!(d, p, p0, wrap, new_d, ϵ)
+            _apply_wrap!(d, p, p0, wrap, new_d, ϵ)
 
             # search for d in directions
             # if not present push it, otherwise continue with next iteration
@@ -133,7 +133,7 @@ function Bravais_dir2indices(lattice::Lattice{2}, ϵ = 1e-6)
         end
     end
     
-    order = sortperm(directions, by = v -> MonteCarlo.directed_norm2(v, ϵ))
+    order = sortperm(directions, by = v -> directed_norm2(v, ϵ))
     return idxs[order]
 end
 
@@ -141,7 +141,7 @@ cached_directions(l::Lattice) = get!(l, :dirs, directions)
 cached_directions(l::Bravais) = get!(l.l, :dirs, l -> directions(Bravais(l)))
 
 function generate_reciprocal_discretization(l::Lattice{2})
-    v1, v2 = MonteCarlo.reciprocal_vectors(l)
+    v1, v2 = reciprocal_vectors(l)
     L1, L2 = l.Ls
     return [i/L1 * v1 .+ j/L2 * v2 for i in 0:L1-1, j in 0:L2-1]
 end

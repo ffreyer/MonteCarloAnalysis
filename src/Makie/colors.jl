@@ -1,5 +1,3 @@
-using .Makie.Colors
-
 # [max val, growth rate, xshift, yshift]
 # @. sigmoid(x, ps::Vector) = ps[1] / (1 + exp(ps[2] * (x - ps[3]))) + ps[4]
 @. sigmoid(x, p1 = 1.0, p2 = -1.0, p3 = 0.0, p4 = 0.0) = p1 / (1 + exp(p2 * (x - p3))) + p4

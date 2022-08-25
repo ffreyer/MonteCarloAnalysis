@@ -1,4 +1,6 @@
-using Makie, Colors, Observables, LsqFit, Loess, GeometryBasics
+using Makie, Colors, Observables, LsqFit, Loess, GeometryBasics, Printf
+import Makie: convert_arguments, PointBased
+using MonteCarlo: Bond, OpenBondIterator, bonds_open
 
 include("colors.jl")
 

@@ -1,5 +1,3 @@
-using Printf, LsqFit
-
 function intmap(df, key)
     vals = unique(getproperty(df, key))
     Int[findfirst(isequal(x), vals)::Int for x in getproperty(df, key)]
