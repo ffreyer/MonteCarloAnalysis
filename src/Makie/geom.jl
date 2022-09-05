@@ -3,10 +3,10 @@ function to_mesh(l::Lattice{2}, zs = nothing)
 end
 
 function to_reciprocal_mesh(l::Lattice{2}, zs = nothing)
-    return to_mesh(MonteCarlo.reciprocal_vectors(l), zs)
+    return to_reciprocal_mesh(MonteCarlo.reciprocal_vectors(l), zs)
 end
 
-function to_reciprocal_mesh(vs::Tuple{2, <: Vector}, zs::Matrix)
+function to_reciprocal_mesh(vs::NTuple{2, <: Vector}, zs::Matrix)
     v1, v2 = vs
     Lx, Ly = size(zs)
     if zs === nothing

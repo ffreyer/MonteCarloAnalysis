@@ -1,20 +1,47 @@
 # TODO generalize
-function reciprocal_discretization(l::Lattice{2})
+function reciprocal_discretization(l::Lattice{2}, center = true)
     Ls = size(l)
     vecs = reciprocal_vectors(l)
-
     qs = [zeros(2) for _ in 1:Ls[1], _ in 1:Ls[2]]
-    temp = zeros(length(Ls))
     
-    for i in 1:Ls[1], j in 1:Ls[2]
-        min = Inf
-        for n in -1:1, m in -1:1
-            temp .= (n + (i-1)/Ls[1]) * vecs[1] .+ (m + (j-1)/Ls[2]) * vecs[2]
+    if center
+        temp = zeros(length(Ls))
+        # for flat in 1:prod(Ls)
+        #     idx = flat
+        #     idxs = map(Ls) do L
+        #         idx, x = fldmod1(idx, L)
+        #         x
+        #     end .- shift
 
-            if norm(temp) < min
-                min = norm(temp)
-                qs[i, j] .= temp
+        #     temp .= 0.0
+        #     for (i, v, diff) in zip(idxs, vecs, shift)
+        #         temp .+= i * v / diff
+        #     end
+
+        #     qs[flat] = copy(temp)
+        # end
+
+        # for flat in 1:prod(Ls)
+        for i in 1:Ls[1], j in 1:Ls[2]
+            # idx = flat
+            # idxs = map(Ls) do L
+            #     idx, x = fldmod1(idx, L)
+            #     x
+            # end
+
+            min = Inf
+            for n in -1:1, m in -1:1
+                temp .= (n + (i-1)/Ls[1]) * vecs[1] .+ (m + (j-1)/Ls[2]) * vecs[2]
+
+                if norm(temp) < min
+                    min = norm(temp)
+                    qs[i, j] .= temp
+                end
             end
+        end
+    else
+        for i in 1:Ls[1], j in 1:Ls[2]
+            qs[i, j] = (i-1) / Ls[1] * vecs[1] .+ (j-1) / Ls[2] * vecs[2]
         end
     end
 
@@ -140,11 +167,8 @@ end
 cached_directions(l::Lattice) = get!(l, :dirs, directions)
 cached_directions(l::Bravais) = get!(l.l, :dirs, l -> directions(Bravais(l)))
 
-function generate_reciprocal_discretization(l::Lattice{2})
-    v1, v2 = reciprocal_vectors(l)
-    L1, L2 = l.Ls
-    return [i/L1 * v1 .+ j/L2 * v2 for i in 0:L1-1, j in 0:L2-1]
-end
+@deprecate generate_reciprocal_discretization(l) reciprocal_discretization(l, false) false
+
 function cached_reciprocal_discretization(l::Lattice{2})
     # The should effectively be the same as their difference is the Periodicity
     # of the reciprocal lattice. 

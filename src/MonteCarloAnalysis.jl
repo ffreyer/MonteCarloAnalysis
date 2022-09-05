@@ -30,4 +30,6 @@ function __init__()
     end
 end
 
+export cached_para_ccc, dia_K_x
+
 end

@@ -154,11 +154,15 @@ function cached_para_ccc(l::Lattice, iter::EachLocalQuadByDistance, ccs::Array, 
     # iterate bond directions (index into ccs, index into directions)
     for (n, ndir) in idx2dir
         for (m, mdir) in idx2dir
-            # bond centers (4)
-            temp .= 0.5 .* (dirs[mdir] .- dirs[ndir])
-
             # prefactor from bond distance (2)
-            weight = dot(dirs[mdir], shift_dir) * dot(dirs[ndir], shift_dir)
+            w1 = dot(dirs[mdir], shift_dir)
+            w2 = dot(dirs[ndir], shift_dir)
+            weight = w1 * w2
+
+            # bond centers (4)
+            # signs for mapping center of reverse bond to center of forward bond
+            # unnecessary because we don't have reduced cases?
+            temp .= 0.5 .* (sign(w1) * dirs[mdir] .- sign(w2) * dirs[ndir])
 
             # iterate basis site indices (of bond source sites)
             for j in axes(ccs, 2), i in axes(ccs, 1)
@@ -241,17 +245,29 @@ function cached_para_ccc(l::Lattice, iter::EachBondPairByBravaisDistance, ccs::A
         0.5 * (uc.sites[b.to] + uc.sites[b.from] + v1 * b.uc_shift[1] + v2 * b.uc_shift[2])
     end
 
-    # directions applicable to shift_dir (and measured bonds)
+    # applicable indices:
+    # 1. index into measurement Array (ccs)
+    # 2. index into distances ds
+    # 3. index into bond centers cs
     applicable = let
         applicable = filter(i -> dot(ds[i], shift_dir) > 0, eachindex(ds))
         if iter.bond_idxs == Colon
             # All bonds are included, so the mapping is just i -> i
-            Pair.(applicable, applicable)
+            tuple.(applicable, applicable, applicable)
         else
-            # A subset of bonds is included. We need to further reduce this 
-            # subset of bonds to those applicable to shift_dir. If bonds going 
-            # in the reverse direction can act as replacements.
-            output = Pair{Int, Int}[]
+            # A subset of bonds is included. Typically this means only one of 
+            # i -> j and j -> i is considered.
+            # We need to find each bond with a component in shift_dir in the 
+            # measured subset. Let's say we need the bond i -> j and find
+            # 1. the matching bond i -> j. In this case we pass its index in 
+            #    bond_idxs (in the measurement) and the index in ds which 
+            #    matches the index in cs.
+            # 2. the reverse bond j -> i. Here we can recover the measurement 
+            #    for i -> j with a factor -1, which we get by considering the 
+            #    direction of j -> i instead of i -> j. So we return the index 
+            #    into bond_idxs of the reverse bond, the index of j -> i in bs 
+            #    for directions ds and the index of i -> j in bs for centers cs.
+            output = NTuple{3, Int}[]
 
             for idx in applicable
                 i = findfirst(isequal(idx), iter.bond_idxs)
@@ -259,14 +275,19 @@ function cached_para_ccc(l::Lattice, iter::EachBondPairByBravaisDistance, ccs::A
                     i = findfirst(isequal(equivalency[idx]), iter.bond_idxs)
                     if i === nothing
                         if !skip_check
+                            # TODO would be better to also check if hopping 
+                            # matrix is 0 for this bond. It should generally 
+                            # be ignored then.
                             error("Missing bond $idx (or $(equivalency[idx]))")
                         else
                             continue
                         end
                     end
-                    push!(output, i => equivalency[idx])
+                    # push!(output, i => equivalency[idx])
+                    push!(output, (i, equivalency[idx], idx))
                 else
-                    push!(output, i => idx)
+                    # push!(output, i => idx)
+                    push!(output, (i, idx, idx))
                 end
             end
 
@@ -277,15 +298,17 @@ function cached_para_ccc(l::Lattice, iter::EachBondPairByBravaisDistance, ccs::A
     # Output
     Λ = zeros(ComplexF64, size(ccs, 1), size(ccs, 2))
 
-    for (i, bi) in applicable, (j, bj) in applicable
+    # for (i, bi) in applicable, (j, bj) in applicable
+    for (i, di, ci) in applicable, (j, dj, cj) in applicable
         # Fourier transform on Bravais lattice for on pair of bonds (i, j)
         fft_cache[:, :] .= ccs[:, :, i, j]
         fft!(fft_cache)
         
         # weights from bond centers and directions
-        weight = dot(ds[bi], shift_dir) * dot(ds[bj], shift_dir)
+        weight = dot(ds[di], shift_dir) * dot(ds[dj], shift_dir)
         for (idx, q) in enumerate(qs)
-            Λ[idx] += fft_cache[idx] * weight * cis(-dot(cs[bi] - cs[bj], q))
+            # Λ[idx] += fft_cache[idx] * weight * cis(-dot(cs[bi] - cs[bj], q))
+            Λ[idx] += fft_cache[idx] * weight * cis(-dot(cs[ci] - cs[cj], q))
         end
     end
 
