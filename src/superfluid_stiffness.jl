@@ -251,7 +251,7 @@ function cached_para_ccc(l::Lattice, iter::EachBondPairByBravaisDistance, ccs::A
     # 3. index into bond centers cs
     applicable = let
         applicable = filter(i -> dot(ds[i], shift_dir) > 0, eachindex(ds))
-        if iter.bond_idxs == Colon
+        if iter.bond_idxs == Colon()
             # All bonds are included, so the mapping is just i -> i
             tuple.(applicable, applicable, applicable)
         else
