@@ -30,6 +30,7 @@ function __init__()
     end
 end
 
-export cached_para_ccc, dia_K_x
+export cached_para_ccc, dia_K
+export fourier
 
 end

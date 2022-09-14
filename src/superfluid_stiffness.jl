@@ -14,23 +14,25 @@ function superfluid_stiffness(
         minimum(last, idx2dist)[1]
     end
 
-    Kx  = dia_K_x(mc, G, shift_dir)
+    Kx  = dia_K(mc, G, shift_dir)
     Λxx = para_ccc(mc, ccs, shift_dir)
 
     return 0.25 * (-Kx - Λxx[idx])
 end
 
+
+@deprecate dia_K_x dia_K
 """
-    dia_K_x(mc, key::Symbol, dir::Vector)
-    dia_K_x(mc, m::DQMCMeasurement, dir::Vector)
-    dia_K_x(mc, G::Matrix, dir::Vector)
+    dia_K(mc, key::Symbol, dir::Vector)
+    dia_K(mc, m::DQMCMeasurement, dir::Vector)
+    dia_K(mc, G::Matrix, dir::Vector)
 
 Computes the diamangetic contribution of electromagnetic response of the system
 along a given direction `dir`. 
 """
-dia_K_x(mc::DQMC, key::Symbol, shift_dir) = dia_K_x(mc, mean(mc[key]), shift_dir)
-dia_K_x(mc::DQMC, m::DQMCMeasurement, shift_dir) = dia_K_x(mc, mean(m), shift_dir)
-function dia_K_x(mc::DQMC, G::AbstractMatrix, shift_dir)
+dia_K(mc::DQMC, key::Symbol, shift_dir) = dia_K(mc, mean(mc[key]), shift_dir)
+dia_K(mc::DQMC, m::DQMCMeasurement, shift_dir) = dia_K(mc, mean(m), shift_dir)
+function dia_K(mc::DQMC, G::AbstractMatrix, shift_dir)
     # I'm heavily referring to and testing against
     # 1. https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.68.2830
     # 2. https://journals.aps.org/prb/abstract/10.1103/PhysRevB.102.201112
@@ -314,3 +316,42 @@ function cached_para_ccc(l::Lattice, iter::EachBondPairByBravaisDistance, ccs::A
 
     return Λ
 end
+
+
+################################################################################
+# TODO cleanup
+################################################################################
+
+
+# # ccs indexing: [basis1, basis2, dir, sub_dir1, sub_dir2]
+# # dirs contains combination of (basis + basis + dir) and (sub_dir)
+# function para_ccc(dirs::Tuple, ccs::Array{<: Number, 5}, dq::Vector, indices = Colon())
+#     Λxx = ComplexF64(0)
+#     temp1 = similar(dq)
+#     temp2 = similar(dq)
+
+#     filtered = dirs[2][indices]
+#     main_dirs = dirs[1]
+
+#     # TODO: performance?
+#     for (j, jdir) in enumerate(filtered), (k, kdir) in enumerate(filtered)
+#         temp1 .= 0.5(jdir .- kdir)
+#         vals = view(ccs, :, :, :, j, k)
+
+#         for (i, dir) in enumerate(main_dirs)
+#             temp2 .= temp1 .+ dir
+#             Λxx += vals[i] * cis(-dot(temp2, dq))
+#         end
+#     end
+
+#     # for (j, jdir) in enumerate(filtered), (k, kdir) in enumerate(filtered)
+#     #     temp1 .= 0.5(jdir .- kdir)
+
+#     #     for m in axes(ccs, 1), n in axes(ccs, 2), o in axes(ccs, 3)
+#     #         temp2 .= temp1 .+ main_dirs[m, n, o]
+#     #         Λxx += ccs[m, n, o, j, k] * cis(-dot(temp2, dq))
+#     #     end
+#     # end
+    
+#     Λxx
+# end
